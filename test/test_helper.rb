@@ -1,4 +1,3 @@
-$LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
-require 'fluent/plugin/mysql/appender'
+require 'fluent/plugin/in_mysql_appender'
 
 require 'minitest/autorun'
