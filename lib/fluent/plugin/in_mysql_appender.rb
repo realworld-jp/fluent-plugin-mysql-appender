@@ -59,9 +59,9 @@ module Fluent
         rows_count = 0
         start_time = Time.now
         if max_id == -1
-          select_query = @query + " order by #{primary_key} asc"
+          select_query = @query.gsub(/"/,'') + " order by #{primary_key} asc"
         else
-          select_query = @query + " where #{primary_key} > #{max_id} order by #{primary_key} asc"
+          select_query = @query.gsub(/"/,'') + " where #{primary_key} > #{max_id} order by #{primary_key} asc"
         end
         rows, con = query(select_query, con)
         rows.each_with_index do |row, index|
