@@ -66,6 +66,7 @@ module Fluent
         rows, con = query(select_query, con)
         rows.each_with_index do |row, index|
           tag = format_tag(@tag, {:event => :insert})
+          row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
           router.emit(tag, Engine.now, row)
           rows_count += 1
           if index == rows.size - 1
