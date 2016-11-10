@@ -68,7 +68,11 @@ module Fluent
           if @time_column.nil? then
               td_time = Engine.now
           else
-              td_time = Time.parse(row[@time_column]).to_i
+              if row[@time_column].kind_of?(Time) then
+                td_time = row[@time_column].to_i
+              else
+                td_time = Time.parse(row[@time_column].to_s).to_i
+              end
           end
           row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
           router.emit(tag, td_time, row)
