@@ -9,6 +9,7 @@ module Fluent
 
     def initialize
       require 'mysql2'
+      require 'time'
       super
     end
 
