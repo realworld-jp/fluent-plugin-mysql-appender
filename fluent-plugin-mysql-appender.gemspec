@@ -1,11 +1,11 @@
 # coding: utf-8
 Gem::Specification.new do |spec|
   spec.name          = "fluent-plugin-mysql-appender"
-  spec.version       = "0.1.3"
-  spec.authors       = ["tsuyoshi_terasaki"]
+  spec.version       = "0.1.4"
+  spec.authors       = ["TERASAKI Tsuyoshi"]
   spec.email         = ["tsuyoshi_terasaki@realworld.jp"]
 
-  spec.summary       = %q{Fluentd input plugin to track insert event from MySQL database server.}
+  spec.summary       = %q{Fluentd input plugin to insert from MySQL database server.}
   spec.description   = %q{Simple incremental id's insert.}
   spec.homepage      = "https://github.com/rw-hub/fluent-plugin-mysql-appender"
   spec.license       = "MIT"
