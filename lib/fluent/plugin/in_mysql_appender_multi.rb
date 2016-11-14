@@ -57,8 +57,9 @@ module Fluent
 
     def poll(config)
       begin
+        tag = format_tag(config)
         @mutex.synchronize {
-          $log.info "mysql_replicator_multi: polling start. :tag=>#{format_tag(config)}"
+          $log.info "mysql_replicator_multi: polling start. :tag=>#{tag}"
         }
         con = get_connection()
         last_id = config['last_id']
@@ -67,7 +68,6 @@ module Fluent
           start_time = Time.now
           rows, con = query(get_query(config, last_id), con)
           rows.each_with_index do |row, index|
-            tag = format_tag(config)
             if @time_column.nil? then
                 td_time = Engine.now
             else
