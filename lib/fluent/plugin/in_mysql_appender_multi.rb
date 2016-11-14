@@ -26,6 +26,8 @@ module Fluent
 
     def configure(conf)
       super
+      @interval = Config.time_value(@interval)
+
       if @tag.nil?
         raise Fluent::ConfigError, "mysql_appender_multi: missing 'tag' parameter. Please add following line into config like 'tag appender.${name}.${event}.${primary_key}'"
       end
