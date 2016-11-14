@@ -36,6 +36,7 @@ module Fluent
     def start
       begin
         @threads = []
+        @mutex = Mutex.new
         YAML.load_file(@yaml_path).each do |config|
           @threads << Thread.new {
             poll(config)
@@ -56,12 +57,12 @@ module Fluent
 
     def poll(config)
       begin
-        masked_config = Hash[config.map {|k,v| (k == 'password') ? [k, v.to_s.gsub(/./, '*')] : [k,v]}]
-        $log.info "mysql_replicator_multi: polling start. :config=>#{masked_config}"
+        @mutex.synchronize {
+          $log.info "mysql_replicator_multi: polling start. :tag=>#{format_tag(config)}"
+        }
         con = get_connection()
         last_id = config['last_id']
         loop do
-          $log.info "loop start in #{format_tag(config)}."
           rows_count = 0
           start_time = Time.now
           rows, con = query(get_query(config, last_id), con)
@@ -85,13 +86,17 @@ module Fluent
           end
           con.close
           elapsed_time = sprintf("%0.02f", Time.now - start_time)
-          $log.info "mysql_appender_multi: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
+          @mutex.synchronize {
+            $log.info "mysql_appender_multi: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
+          }
           sleep @interval
         end
       rescue StandardError => e
-        $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
-        $log.error "error: #{e.message}"
-        $log.error e.backtrace.join("\n")
+        @mutex.synchronize {
+          $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
+          $log.error "error: #{e.message}"
+          $log.error e.backtrace.join("\n")
+        }
       end
     end
 
@@ -112,7 +117,8 @@ module Fluent
     end
 
     def format_tag(config)
-      "#{tag}.#{config['database']}.#{config['table_name']}"
+      add_db = config['td_database'] ? config['td_database'] + '.' : ''
+      "#{tag}.#{add_db}#{config['table_name']}"
     end
 
     def get_connection
