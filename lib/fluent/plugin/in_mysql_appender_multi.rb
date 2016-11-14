@@ -54,9 +54,12 @@ module Fluent
 
     def poll(config)
       begin
+        masked_config = Hash[config.map {|k,v| (k == 'password') ? [k, v.to_s.gsub(/./, '*')] : [k,v]}]
+        $log.info "mysql_replicator_multi: polling start. :config=>#{masked_config}"
         con = get_connection()
         last_id = config['last_id']
         loop do
+          $log.info "loop start in #{format_tag(config)}."
           rows_count = 0
           start_time = Time.now
           rows, con = query(get_query(config, last_id), con)
@@ -80,6 +83,7 @@ module Fluent
           end
           con.close
           elapsed_time = sprintf("%0.02f", Time.now - start_time)
+          $log.info "mysql_appender_multi: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
           sleep @interval
         end
       rescue StandardError => e
@@ -123,7 +127,7 @@ module Fluent
           :cache_rows => false
         })
       rescue Exception => e
-        $log.warn "mysql_appender: #{e}"
+        $log.warn "mysql_appender_multi: #{e}"
         sleep @interval
         retry
       end
