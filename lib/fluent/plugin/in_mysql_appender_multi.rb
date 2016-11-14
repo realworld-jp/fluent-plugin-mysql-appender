@@ -63,10 +63,9 @@ module Fluent
         loop do
           rows_count = 0
           start_time = Time.now
-          select_query = get_query(config, last_id)
-          rows, con = query(select_query, con)
+          rows, con = query(get_query(config, last_id), con)
           rows.each_with_index do |row, index|
-            tag = format_tag(@tag, {:name => config['name'], :event => :insert, :primary_key => config['primary_key']})
+            tag = format_tag(config)
             if @time_column.nil? then
                 td_time = Engine.now
             else
@@ -100,10 +99,26 @@ module Fluent
     end
 
     def get_query(config, last_id)
-      "SELECT #{config['columns'].join(",")} FROM #{config['name']} where #{config['primary_key']} > #{last_id} order by #{config['primary_key']} asc limit #{config['limit']}"
+      "SELECT #{config['columns'].join(",")} FROM #{config['table_name']} where #{config['primary_key']} > #{last_id} order by #{config['primary_key']} asc limit #{config['limit']}"
     end
 
-    def get_connection(config)
+    def query(query, con = nil)
+      begin
+        con = con.nil? ? get_connection : con
+        con = con.ping ? con : get_connection
+        return con.query(query), con
+      rescue Exception => e
+        $log.warn "mysql_appender_multi: #{e}"
+        sleep @interval
+        retry
+      end
+    end
+
+    def format_tag(config)
+      "#{tag}.#{config['database']}.#{config['table_name']}"
+    end
+
+    def get_connection
       begin
         return Mysql2::Client.new({
           :host => @host,
