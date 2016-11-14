@@ -34,7 +34,6 @@ module Fluent
     def start
       begin
         @threads = []
-        @mutex = Mutex.new
         YAML.load_file(@yaml_path).each do |config|
           @threads << Thread.new {
             poll(config)
@@ -55,9 +54,6 @@ module Fluent
 
     def poll(config)
       begin
-        @mutex.synchronize {
-          $log.info "mysql_appender_multi: polling start. :config=>#{masked_config}"
-        }
         con = get_connection()
         last_id = config['last_id']
         loop do
@@ -84,17 +80,12 @@ module Fluent
           end
           con.close
           elapsed_time = sprintf("%0.02f", Time.now - start_time)
-          @mutex.synchronize {
-            $log.info "mysql_appender: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
-          }
           sleep @interval
         end
       rescue StandardError => e
-        @mutex.synchronize {
-          $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
-          $log.error "error: #{e.message}"
-          $log.error e.backtrace.join("\n")
-        }
+        $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
+        $log.error "error: #{e.message}"
+        $log.error e.backtrace.join("\n")
       end
     end
 
