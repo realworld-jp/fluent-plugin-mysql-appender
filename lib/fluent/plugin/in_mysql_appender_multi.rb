@@ -28,6 +28,14 @@ module Fluent
       super
       @interval = Config.time_value(@interval)
 
+      if @yaml_path.nil?
+        raise Fluent::ConfigError, "mysql_appender_multi: missing 'yaml_path' parameter or file not found."
+      end
+
+      if  !File.exist?(@yaml_path)
+        raise Fluent::ConfigError, "mysql_appender_multi: 'yaml_path' No such file."
+      end
+
       if @tag.nil?
         raise Fluent::ConfigError, "mysql_appender_multi: missing 'tag' parameter. Please add following line into config like 'tag appender.${name}.${event}.${primary_key}'"
       end
