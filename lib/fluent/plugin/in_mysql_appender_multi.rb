@@ -89,7 +89,7 @@ module Fluent
             router.emit(tag, td_time, row)
             rows_count += 1
             if index == rows.size - 1
-              @last_id = row[config['primary_key']]
+              last_id = row[config['primary_key']]
             end
           end
           con.close
