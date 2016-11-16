@@ -32,7 +32,7 @@ module Fluent
         raise Fluent::ConfigError, "mysql_appender_multi: missing 'yaml_path' parameter or file not found."
       end
 
-      if  !File.exist?(@yaml_path)
+      if !File.exist?(@yaml_path)
         raise Fluent::ConfigError, "mysql_appender_multi: 'yaml_path' No such file."
       end
 

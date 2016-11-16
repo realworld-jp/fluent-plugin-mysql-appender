@@ -1,41 +1,83 @@
-# Fluent::Plugin::Mysql::Appender
+# fluent-plugin-mysql-appender
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/fluent/plugin/mysql/appender`. To experiment with that code, run `bin/console` for an interactive prompt.
+## Overview
 
-TODO: Delete this and the text above, and describe your gem
+Fluentd input plugin to track insert event only from MySQL database server.
+Simple incremental id's insert.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+install with gem or fluent-gem command as:
 
-```ruby
-gem 'fluent-plugin-mysql-appender'
-```
+`````
+# for system installed fluentd
+$ gem install fluent-plugin-mysql-appender
 
-And then execute:
+# for td-agent2
+$ td-agent-gem install fluent-plugin-mysql-appender
+`````
 
-    $ bundle
+## Included plugins
 
-Or install it yourself as:
+* Input Plugin: mysql_appender
+* Input Plugin: mysql_appender_multi
 
-    $ gem install fluent-plugin-mysql-appender
+## Output example
 
-## Usage
+It is a example when detecting insert events.
 
-TODO: Write usage instructions here
+### sample query
 
-## Development
+`````
+$ mysql -e "create database myweb"
+$ mysql myweb -e "create table search_test(id int auto_increment, text text, PRIMARY KEY (id))"
+$ sleep 10
+$ mysql myweb -e "insert into search_test(text) values('aaa')"
+`````
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+### result
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+`````
+$ tail -f /var/log/td-agent/td-agent.log
+2013-11-25 18:22:25 +0900 appender.myweb.search_test: {"id":"1","text":"aaa"}
+`````
 
-## Contributing
+mysql query log is below
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/fluent-plugin-mysql-appender.
+`````
+$ tail -f /var/log/mysql/general-query.log
+161108 19:25:52        4 Connect    root@localhost on myweb
+            4 Query    SELECT id, text FROM search_test where id > -1 order by id asc
+            4 Quit
+161108 19:26:02        5 Connect    root@localhost on myweb
+            4 Query    SELECT id, text FROM search_test where id > 1 order by id asc
+            4 Quit
+`````
 
+## Tutorial
 
-## License
+### mysql_appender
 
-The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
+see example/mysql_single_table_to_tresure_data.md.
+
+**Features**
+
+* Table (or view table) synchronization supported.
+* Replicate small record under a millons table.
+
+### mysql_appender_multi
+
+see example/mysql_multi_table_to_tresure_data.md.
+
+**Features**
+
+* table (or view table) synchronization supported.
+* Multiple table synchronization supported and its DSN stored in yaml file.
+
+## TODO
+
+Pull requests are very welcome like below!!
+
+* more documents
+* more tests.
 
