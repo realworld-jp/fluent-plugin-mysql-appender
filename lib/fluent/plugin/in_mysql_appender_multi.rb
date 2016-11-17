@@ -76,10 +76,10 @@ module Fluent
           start_time = Time.now
           rows, con = query(get_query(config, last_id), con)
           rows.each_with_index do |row, index|
-            if @time_column.nil? then
+            if config['time_column'].nil? then
                 td_time = Engine.now
             else
-                if row[@time_column].kind_of?(Time) then
+                if row[config['time_column']].kind_of?(Time) then
                   td_time = row[config['time_column']].to_i
                 else
                   td_time = Time.parse(row[config['time_column']].to_s).to_i
