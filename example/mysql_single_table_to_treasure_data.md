@@ -25,6 +25,7 @@ It is a guide to replicate single mysql table to treasure data.
   time_column created_at # specify TIME column.
   limit   1000 # query limit
   last_id -1   # specify primary_key start
+  buffer  10   # last 10 records don't append (default 0).
 </source>
 
 <match appender.*.*>

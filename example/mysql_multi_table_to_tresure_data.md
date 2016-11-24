@@ -50,6 +50,7 @@ Sample "in_tables.yml" is below.
     - column1
     - column2
   last_id: -1
+  buffer: 10   # last 10 records don't append (default 0).
   td_database: sample_datasets
 
 - table_name: test_tbl2
@@ -61,5 +62,6 @@ Sample "in_tables.yml" is below.
     - column1
     - column2
   last_id: -1
+  buffer: 10   # last 10 records don't append (default 0).
   td_database: sample_datasets
 ```

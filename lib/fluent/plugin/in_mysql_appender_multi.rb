@@ -29,11 +29,11 @@ module Fluent
       @interval = Config.time_value(@interval)
 
       if @yaml_path.nil?
-        raise Fluent::ConfigError, "mysql_appender_multi: missing 'yaml_path' parameter or file not found."
+        raise Fluent::ConfigError, "mysql_appender_multi: missing 'yaml_path' parameter."
       end
 
       if !File.exist?(@yaml_path)
-        raise Fluent::ConfigError, "mysql_appender_multi: 'yaml_path' No such file."
+        raise Fluent::ConfigError, "mysql_appender_multi: No such file in 'yaml_path'."
       end
 
       if @tag.nil?
@@ -66,6 +66,7 @@ module Fluent
     def poll(config)
       begin
         tag = format_tag(config)
+        buffer = config['buffer'] || 0
         @mutex.synchronize {
           $log.info "mysql_replicator_multi: polling start. :tag=>#{tag}"
         }
@@ -75,21 +76,26 @@ module Fluent
           rows_count = 0
           start_time = Time.now
           rows, con = query(get_query(config, last_id), con)
-          rows.each_with_index do |row, index|
-            if config['time_column'].nil? then
-                td_time = Engine.now
-            else
-                if row[config['time_column']].kind_of?(Time) then
-                  td_time = row[config['time_column']].to_i
-                else
-                  td_time = Time.parse(row[config['time_column']].to_s).to_i
-                end
-            end
-            row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
-            router.emit(tag, td_time, row)
-            rows_count += 1
-            if index == rows.size - 1
-              last_id = row[config['primary_key']]
+          if buffer < rows.size then
+            rows.each_with_index do |row, index|
+              if index == (rows.size - buffer) then
+                break
+              end
+              if config['time_column'].nil? then
+                  td_time = Engine.now
+              else
+                  if row[config['time_column']].kind_of?(Time) then
+                    td_time = row[config['time_column']].to_i
+                  else
+                    td_time = Time.parse(row[config['time_column']].to_s).to_i
+                  end
+              end
+              row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
+              router.emit(tag, td_time, row)
+              rows_count += 1
+              if index == (rows.size - buffer - 1)
+                last_id = row[config['primary_key']]
+              end
             end
           end
           con.close
