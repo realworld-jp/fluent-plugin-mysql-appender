@@ -7,12 +7,18 @@ rescue Bundler::BundlerError => e
   $stderr.puts "Run `bundle install` to install missing gems"
   exit e.status_code
 end
+
 require 'test/unit'
+require 'test/unit/rr'
+require 'yaml'
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
 $LOAD_PATH.unshift(File.dirname(__FILE__))
+
 require 'fluent/test'
 require 'fluent/input'
+require 'fluent/log'
+
 unless ENV.has_key?('VERBOSE')
   nulllogger = Object.new
   nulllogger.instance_eval {|obj|

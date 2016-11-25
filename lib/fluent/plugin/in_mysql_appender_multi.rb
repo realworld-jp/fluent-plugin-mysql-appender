@@ -18,7 +18,7 @@ module Fluent
     config_param :port, :integer, :default => 3306
     config_param :username, :string, :default => 'root'
     config_param :password, :string, :default => nil, :secret => true
-    config_param :database, :string, :default => nil
+    config_param :database, :string, :default => 'sample_db'
     config_param :encoding, :string, :default => 'utf8'
     config_param :interval, :string, :default => '1m'
     config_param :tag, :string, :default => 'appender_multi'
@@ -29,11 +29,11 @@ module Fluent
       @interval = Config.time_value(@interval)
 
       if @yaml_path.nil?
-        raise Fluent::ConfigError, "mysql_appender_multi: missing 'yaml_path' parameter or file not found."
+        raise Fluent::ConfigError, "mysql_appender_multi: missing 'yaml_path' parameter."
       end
 
       if !File.exist?(@yaml_path)
-        raise Fluent::ConfigError, "mysql_appender_multi: 'yaml_path' No such file."
+        raise Fluent::ConfigError, "mysql_appender_multi: No such file in 'yaml_path'."
       end
 
       if @tag.nil?
@@ -88,7 +88,7 @@ module Fluent
             row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
             router.emit(tag, td_time, row)
             rows_count += 1
-            if index == rows.size - 1
+            if index == rows.size - 1 then
               last_id = row[config['primary_key']]
             end
           end
