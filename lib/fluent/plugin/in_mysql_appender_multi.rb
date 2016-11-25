@@ -80,7 +80,6 @@ module Fluent
             if !config['entry_time'].nil? then
               entry_time = get_time(row[config['entry_time']])
               if (Time.now - delay) < entry_time then
-                last_id = row[config['primary_key']]
                 break
               end
             end

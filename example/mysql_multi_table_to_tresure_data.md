@@ -51,7 +51,7 @@ Sample "in_tables.yml" is below.
     - column2
   last_id: -1
   td_database: sample_datasets
-  entry_time: created_at  # this column compare (now - delay) time
+  entry_time: created_at  # if this column is greater (now - delay), wait insert.
   delay: 10s
 
 - table_name: test_tbl2
