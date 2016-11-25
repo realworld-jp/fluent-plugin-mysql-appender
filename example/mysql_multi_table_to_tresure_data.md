@@ -51,6 +51,8 @@ Sample "in_tables.yml" is below.
     - column2
   last_id: -1
   td_database: sample_datasets
+  entry_time: created_at  # this column compare (now - delay) time
+  delay: 10s
 
 - table_name: test_tbl2
   primary_key: id

@@ -37,6 +37,8 @@ class MysqlAppenderMultiInputTest < Test::Unit::TestCase
     - column2
     - created_at
   last_id: -1
+  entry_time: created_at
+  delay: 3h
   td_database: sample_datasets
 EOS
     conf = YAML.load(str)

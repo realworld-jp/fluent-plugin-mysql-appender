@@ -66,8 +66,9 @@ module Fluent
     def poll(config)
       begin
         tag = format_tag(config)
+        delay = Config.time_value(config['delay'] || 0)
         @mutex.synchronize {
-          $log.info "mysql_replicator_multi: polling start. :tag=>#{tag}"
+          $log.info "mysql_replicator_multi: polling start. :tag=>#{tag} :delay=>#{delay}"
         }
         con = get_connection()
         last_id = config['last_id']
@@ -76,21 +77,22 @@ module Fluent
           start_time = Time.now
           rows, con = query(get_query(config, last_id), con)
           rows.each_with_index do |row, index|
+            if !config['entry_time'].nil? then
+              entry_time = get_time(row[config['entry_time']])
+              if (Time.now - delay) < entry_time then
+                last_id = row[config['primary_key']]
+                break
+              end
+            end
             if config['time_column'].nil? then
                 td_time = Engine.now
             else
-                if row[config['time_column']].kind_of?(Time) then
-                  td_time = row[config['time_column']].to_i
-                else
-                  td_time = Time.parse(row[config['time_column']].to_s).to_i
-                end
+              td_time = get_time(row[config['time_column']]).to_i
             end
             row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
             router.emit(tag, td_time, row)
             rows_count += 1
-            if index == rows.size - 1 then
-              last_id = row[config['primary_key']]
-            end
+            last_id = row[config['primary_key']]
           end
           con.close
           elapsed_time = sprintf("%0.02f", Time.now - start_time)
@@ -146,6 +148,14 @@ module Fluent
         $log.warn "mysql_appender_multi: #{e}"
         sleep @interval
         retry
+      end
+    end
+
+    def get_time(in_time)
+      if in_time.kind_of?(Time) then
+        in_time
+      else
+        Time.parse(in_time.to_s)
       end
     end
   end
