@@ -100,12 +100,10 @@ module Fluent
           }
           sleep @interval
         end
-      rescue StandardError => e
-        @mutex.synchronize {
-          $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
-          $log.error "error: #{e.message}"
-          $log.error e.backtrace.join("\n")
-        }
+      rescue => e
+        $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
+        $log.error "error: #{e.message}"
+        $log.error e.backtrace.join("\n")
       end
     end
 
