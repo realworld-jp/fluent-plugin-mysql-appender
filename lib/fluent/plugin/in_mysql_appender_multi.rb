@@ -22,7 +22,8 @@ module Fluent
     config_param :encoding, :string, :default => 'utf8'
     config_param :interval, :string, :default => '1m'
     config_param :tag, :string, :default => 'appender_multi'
-    config_param :yaml_path, :string, :default=> nil
+    config_param :yaml_path, :string, :default => nil
+    config_param :abort_exception, :bool, :default => false
 
     def configure(conf)
       super
@@ -43,6 +44,8 @@ module Fluent
 
     def start
       begin
+        Thread.abort_on_exception = @abort_exception
+
         @threads = []
         @mutex = Mutex.new
         YAML.load_file(@yaml_path).each do |config|
@@ -51,7 +54,7 @@ module Fluent
           }
         end
         $log.error "mysql_appender_multi: stop working due to empty configuration" if @threads.empty?
-      rescue StandardError => e
+      rescue => e
         $log.error "error: #{e.message}"
         $log.error e.backtrace.join("\n")
       end
