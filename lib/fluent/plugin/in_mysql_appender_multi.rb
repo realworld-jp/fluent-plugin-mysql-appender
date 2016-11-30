@@ -11,6 +11,8 @@ module Fluent
       require 'mysql2'
       require 'time'
       require 'yaml'
+      require 'td'
+      require 'td-client'
       super
     end
 
@@ -71,7 +73,7 @@ module Fluent
           $log.info "mysql_replicator_multi: polling start. :tag=>#{tag} :delay=>#{delay}"
         }
         con = get_connection()
-        last_id = config['last_id']
+        last_id = get_lastid(config)
         loop do
           rows_count = 0
           start_time = Time.now
@@ -102,6 +104,44 @@ module Fluent
         end
       rescue => e
         $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
+        $log.error "error: #{e.message}"
+        $log.error e.backtrace.join("\n")
+      end
+    end
+
+    def get_lastid(config)
+      begin
+        if !ENV.key?('TD_APIKEY') || !ENV.key?('TD_ENDPOINT') then
+          return -1
+        end
+        cln = TreasureData::Client.new(ENV['TD_APIKEY'],{:endpoint => "https://" + ENV['TD_ENDPOINT']})
+        table_exists = false
+        cln.databases.each { |db|
+          db.tables.each { |tbl|
+            if tbl.db_name == config['td_database'] && tbl.table_name == config['table_name'] then
+                table_exists = true
+                break
+            end
+          }
+        }
+        if table_exists then
+          query = "SELECT MAX(#{config['primary_key']}) FROM #{config['table_name']}"
+          job = cln.query(config['td_database'], query, nil, nil, nil , {:type => :presto})
+          until job.finished?
+            sleep 2
+            job.update_progress!
+          end
+          job.update_status!  # get latest info
+          job.result_each { |row|
+            $log.info  "mysql_replicator_multi: #{config['td_database']}.#{config['table_name']}'s last_id is #{row.first} "
+            return row.first
+          }
+        else
+          $log.info "mysql_replicator_multi: #{config['td_database']}.#{config['table_name']} is not found. "
+          return -1
+        end
+      rescue => e
+        $log.warn "mysql_appender_multi: failed to get lastid. #{config}"
         $log.error "error: #{e.message}"
         $log.error e.backtrace.join("\n")
       end
@@ -141,7 +181,7 @@ module Fluent
           :stream => true,
           :cache_rows => false
         })
-      rescue Exception => e
+      rescue Mysql2::Error => e
         $log.warn "mysql_appender_multi: #{e}"
         sleep @interval
         retry

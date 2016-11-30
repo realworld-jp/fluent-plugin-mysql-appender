@@ -1,7 +1,7 @@
 # coding: utf-8
 Gem::Specification.new do |spec|
   spec.name          = "fluent-plugin-mysql-appender"
-  spec.version       = "0.4.0"
+  spec.version       = "0.4.1"
   spec.authors       = ["TERASAKI Tsuyoshi"]
   spec.email         = ["tsuyoshi_terasaki@realworld.jp"]
 
@@ -17,6 +17,8 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "fluentd"
   spec.add_runtime_dependency "mysql2"
+  spec.add_runtime_dependency "td"
+  spec.add_runtime_dependency "td-client"
 
   spec.add_development_dependency "rake"
   spec.add_development_dependency "test-unit"
