@@ -70,7 +70,7 @@ module Fluent
         tag = format_tag(config)
         delay = Config.time_value(config['delay'] || 0)
         @mutex.synchronize {
-          $log.info "mysql_replicator_multi: polling start. :tag=>#{tag} :delay=>#{delay}"
+          $log.info "mysql_appender_multi: polling start. :tag=>#{tag} :delay=>#{delay}"
         }
         con = get_connection()
         last_id = get_lastid(config)
@@ -133,11 +133,11 @@ module Fluent
           end
           job.update_status!  # get latest info
           job.result_each { |row|
-            $log.info  "mysql_replicator_multi: #{ENV['TD_DATABASE']}.#{config['table_name']}'s last_id is #{row.first} "
+            $log.info  "mysql_appender_multi: #{ENV['TD_DATABASE']}.#{config['table_name']}'s last_id is #{row.first} "
             return row.first
           }
         else
-          $log.info "mysql_replicator_multi: #{ENV['TD_DATABASE']}.#{config['table_name']} is not found. "
+          $log.info "mysql_appender_multi: #{ENV['TD_DATABASE']}.#{config['table_name']} is not found. "
           return -1
         end
       rescue => e
