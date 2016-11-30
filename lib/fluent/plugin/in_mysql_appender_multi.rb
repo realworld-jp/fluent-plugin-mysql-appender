@@ -23,7 +23,6 @@ module Fluent
     config_param :interval, :string, :default => '1m'
     config_param :tag, :string, :default => 'appender_multi'
     config_param :yaml_path, :string, :default => nil
-    config_param :abort_exception, :bool, :default => false
 
     def configure(conf)
       super
@@ -44,8 +43,6 @@ module Fluent
 
     def start
       begin
-        Thread.abort_on_exception = @abort_exception
-
         @threads = []
         @mutex = Mutex.new
         YAML.load_file(@yaml_path).each do |config|
@@ -82,7 +79,7 @@ module Fluent
           rows.each_with_index do |row, index|
             if !config['entry_time'].nil? then
               entry_time = get_time(row[config['entry_time']])
-              if (Time.now - delay) < entry_time then
+              if (start_time - delay) < entry_time then
                 break
               end
             end
