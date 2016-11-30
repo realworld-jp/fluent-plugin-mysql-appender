@@ -1,7 +1,7 @@
 # coding: utf-8
 Gem::Specification.new do |spec|
   spec.name          = "fluent-plugin-mysql-appender"
-  spec.version       = "0.3.9"
+  spec.version       = "0.4.0"
   spec.authors       = ["TERASAKI Tsuyoshi"]
   spec.email         = ["tsuyoshi_terasaki@realworld.jp"]
 
