@@ -111,14 +111,14 @@ module Fluent
 
     def get_lastid(config)
       begin
-        if !ENV.key?('TD_APIKEY') || !ENV.key?('TD_ENDPOINT') then
+        if !ENV.key?('TD_APIKEY') || !ENV.key?('TD_ENDPOINT') || !ENV.key?('TD_DATABASE') then
           return -1
         end
         cln = TreasureData::Client.new(ENV['TD_APIKEY'],{:endpoint => "https://" + ENV['TD_ENDPOINT']})
         table_exists = false
         cln.databases.each { |db|
           db.tables.each { |tbl|
-            if tbl.db_name == config['td_database'] && tbl.table_name == config['table_name'] then
+            if tbl.db_name == ENV['TD_DATABASE'] && tbl.table_name == config['table_name'] then
                 table_exists = true
                 break
             end
@@ -126,18 +126,18 @@ module Fluent
         }
         if table_exists then
           query = "SELECT MAX(#{config['primary_key']}) FROM #{config['table_name']}"
-          job = cln.query(config['td_database'], query, nil, nil, nil , {:type => :presto})
+          job = cln.query(ENV['TD_DATABASE'], query, nil, nil, nil , {:type => :presto})
           until job.finished?
             sleep 2
             job.update_progress!
           end
           job.update_status!  # get latest info
           job.result_each { |row|
-            $log.info  "mysql_replicator_multi: #{config['td_database']}.#{config['table_name']}'s last_id is #{row.first} "
+            $log.info  "mysql_replicator_multi: #{ENV['TD_DATABASE']}.#{config['table_name']}'s last_id is #{row.first} "
             return row.first
           }
         else
-          $log.info "mysql_replicator_multi: #{config['td_database']}.#{config['table_name']} is not found. "
+          $log.info "mysql_replicator_multi: #{ENV['TD_DATABASE']}.#{config['table_name']} is not found. "
           return -1
         end
       rescue => e
@@ -164,7 +164,7 @@ module Fluent
     end
 
     def format_tag(config)
-      add_db = config['td_database'] ? config['td_database'] + '.' : ''
+      add_db = ENV.key?('TD_DATABASE') ? ENV['TD_DATABASE'] + '.' : ''
       "#{tag}.#{add_db}#{config['table_name']}"
     end
 
