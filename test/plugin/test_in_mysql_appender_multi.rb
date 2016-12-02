@@ -38,7 +38,7 @@ class MysqlAppenderMultiInputTest < Test::Unit::TestCase
     - created_at
   last_id: -1
   entry_time: created_at
-  delay: 3h
+  delay: 5m
   td_database: sample_datasets
 - table_name: test_tbl2
   primary_key: id
@@ -51,7 +51,7 @@ class MysqlAppenderMultiInputTest < Test::Unit::TestCase
     - created_at
   last_id: -1
   entry_time: created_at
-  delay: 3h
+  delay: 5m
   td_database: sample_datasets
 EOS
     conf = YAML.load(str)

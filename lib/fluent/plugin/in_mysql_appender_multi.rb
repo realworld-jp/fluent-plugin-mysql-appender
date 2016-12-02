@@ -65,21 +65,19 @@ module Fluent
           configs.each do |config|
             rows_count = 0
             db.query(get_query(config)).each do |row|
-              if !config['entry_time'].nil? then
-                entry_time = get_time(row[config['entry_time']])
-                if (start_time - config['delay']) < entry_time then
-                  break
+              entry_time = get_time(row[config['entry_time']])
+              if (start_time - config['delay']) > entry_time then
+                if config['time_column'].nil? then
+                    td_time = Engine.now
+                else
+                  td_time = get_time(row[config['time_column']]).to_i
                 end
+                row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
+                # puts row
+                router.emit(config['tag'], td_time, row)
+                rows_count += 1
+                config['last_id'] = row[config['primary_key']]
               end
-              if config['time_column'].nil? then
-                  td_time = Engine.now
-              else
-                td_time = get_time(row[config['time_column']]).to_i
-              end
-              row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
-              router.emit(config['tag'], td_time, row)
-              rows_count += 1
-              config['last_id'] = row[config['primary_key']]
             end
             $log.info "mysql_appender_multi: finished execution :tag=>#{config['tag']} :rows_count=>#{rows_count} :last_id=>#{config['last_id']}"
           end
