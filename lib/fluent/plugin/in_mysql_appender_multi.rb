@@ -83,7 +83,6 @@ module Fluent
             end
           end
           db.close
-          $log.info "mysql_appender_multi: finished execution :elapsed_time=>#{elapsed_time} sec"
           sleep @interval
         end
       rescue => e
