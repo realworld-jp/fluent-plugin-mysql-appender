@@ -37,68 +37,53 @@ module Fluent
       if !File.exist?(@yaml_path)
         raise Fluent::ConfigError, "mysql_appender_multi: No such file in 'yaml_path'."
       end
-
-      if @tag.nil?
-        raise Fluent::ConfigError, "mysql_appender_multi: missing 'tag' parameter. Please add following line into config like 'tag appender.${name}.${event}.${primary_key}'"
-      end
     end
 
     def start
-      begin
-        @threads = []
-        @mutex = Mutex.new
-        YAML.load_file(@yaml_path).each do |config|
-          @threads << Thread.new {
-            poll(config)
-          }
-        end
-        $log.error "mysql_appender_multi: stop working due to empty configuration" if @threads.empty?
-      rescue => e
-        $log.error "error: #{e.message}"
-        $log.error e.backtrace.join("\n")
-      end
+      @thread = Thread.new(&method(:run))
     end
 
     def shutdown
-      @threads.each do |thread|
-        Thread.kill(thread)
-      end
+      Thread.kill(@thread)
     end
 
-    def poll(config)
+    private
+
+    def run
       begin
-        tag = format_tag(config)
-        delay = Config.time_value(config['delay'] || 0)
-        @mutex.synchronize {
-          $log.info "mysql_appender_multi: polling start. :tag=>#{tag} :delay=>#{delay}"
-        }
-        last_id = get_lastid(config)
+        # initialize
+        configs = YAML.load_file(@yaml_path)
+        configs.each do |config|
+          config['last_id'] = get_lastid(config)
+          config['tag'] = format_tag(config)
+          config['delay'] = Config.time_value(config['delay'] || 0)
+        end
+
         loop do
-          rows_count = 0
-          start_time = Time.now
           db = get_connection
-          db.query(get_query(config, last_id)).each do |row|
-            if !config['entry_time'].nil? then
-              entry_time = get_time(row[config['entry_time']])
-              if (start_time - delay) < entry_time then
-                break
+          configs.each do |config|
+            db.query(get_query(config)).each do |row|
+              rows_count = 0
+              if !config['entry_time'].nil? then
+                entry_time = get_time(row[config['entry_time']])
+                if (start_time - config['delay']) < entry_time then
+                  break
+                end
               end
+              if config['time_column'].nil? then
+                  td_time = Engine.now
+              else
+                td_time = get_time(row[config['time_column']]).to_i
+              end
+              row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
+              router.emit(config['tag'], td_time, row)
+              rows_count += 1
+              config['last_id'] = row[config['primary_key']]
+              $log.info "mysql_appender_multi: :tag=>#{config['tag']} :rows_count=>#{rows_count} :last_id=>#{config['last_id']} "
             end
-            if config['time_column'].nil? then
-                td_time = Engine.now
-            else
-              td_time = get_time(row[config['time_column']]).to_i
-            end
-            row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
-            router.emit(tag, td_time, row)
-            rows_count += 1
-            last_id = row[config['primary_key']]
           end
           db.close
-          elapsed_time = sprintf("%0.02f", Time.now - start_time)
-          @mutex.synchronize {
-            $log.info "mysql_appender_multi: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
-          }
+          $log.info "mysql_appender_multi: finished execution :elapsed_time=>#{elapsed_time} sec"
           sleep @interval
         end
       rescue => e
@@ -146,8 +131,8 @@ module Fluent
       end
     end
 
-    def get_query(config, last_id)
-      "SELECT #{config['columns'].join(",")} FROM #{config['table_name']} where #{config['primary_key']} > #{last_id} order by #{config['primary_key']} asc limit #{config['limit']}"
+    def get_query(config)
+      "SELECT #{config['columns'].join(",")} FROM #{config['table_name']} where #{config['primary_key']} > #{config['last_id']} order by #{config['primary_key']} asc limit #{config['limit']}"
     end
 
     def format_tag(config)
