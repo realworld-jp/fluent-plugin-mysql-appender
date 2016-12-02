@@ -72,13 +72,12 @@ module Fluent
         @mutex.synchronize {
           $log.info "mysql_appender_multi: polling start. :tag=>#{tag} :delay=>#{delay}"
         }
-        con = get_connection()
         last_id = get_lastid(config)
         loop do
           rows_count = 0
           start_time = Time.now
-          rows, con = query(get_query(config, last_id), con)
-          rows.each_with_index do |row, index|
+          db = get_connection
+          db.query(get_query(config, last_id)).each do |row|
             if !config['entry_time'].nil? then
               entry_time = get_time(row[config['entry_time']])
               if (start_time - delay) < entry_time then
@@ -95,7 +94,7 @@ module Fluent
             rows_count += 1
             last_id = row[config['primary_key']]
           end
-          con.close
+          db.close
           elapsed_time = sprintf("%0.02f", Time.now - start_time)
           @mutex.synchronize {
             $log.info "mysql_appender_multi: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
@@ -149,18 +148,6 @@ module Fluent
 
     def get_query(config, last_id)
       "SELECT #{config['columns'].join(",")} FROM #{config['table_name']} where #{config['primary_key']} > #{last_id} order by #{config['primary_key']} asc limit #{config['limit']}"
-    end
-
-    def query(query, con = nil)
-      begin
-        con = con.nil? ? get_connection : con
-        con = con.ping ? con : get_connection
-        return con.query(query), con
-      rescue Exception => e
-        $log.warn "mysql_appender_multi: #{e}"
-        sleep @interval
-        retry
-      end
     end
 
     def format_tag(config)
