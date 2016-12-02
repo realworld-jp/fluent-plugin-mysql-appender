@@ -40,6 +40,19 @@ class MysqlAppenderMultiInputTest < Test::Unit::TestCase
   entry_time: created_at
   delay: 3h
   td_database: sample_datasets
+- table_name: test_tbl2
+  primary_key: id
+  time_column: created_at
+  limit: 1000
+  columns:
+    - id
+    - column1
+    - column2
+    - created_at
+  last_id: -1
+  entry_time: created_at
+  delay: 3h
+  td_database: sample_datasets
 EOS
     conf = YAML.load(str)
     stub(YAML).load_file{conf}

@@ -60,10 +60,11 @@ module Fluent
         end
 
         loop do
+          start_time = Time.now
           db = get_connection
           configs.each do |config|
+            rows_count = 0
             db.query(get_query(config)).each do |row|
-              rows_count = 0
               if !config['entry_time'].nil? then
                 entry_time = get_time(row[config['entry_time']])
                 if (start_time - config['delay']) < entry_time then
@@ -79,8 +80,8 @@ module Fluent
               router.emit(config['tag'], td_time, row)
               rows_count += 1
               config['last_id'] = row[config['primary_key']]
-              $log.info "mysql_appender_multi: :tag=>#{config['tag']} :rows_count=>#{rows_count} :last_id=>#{config['last_id']} "
             end
+            $log.info "mysql_appender_multi: finished execution :tag=>#{config['tag']} :rows_count=>#{rows_count} :last_id=>#{config['last_id']}"
           end
           db.close
           sleep @interval
