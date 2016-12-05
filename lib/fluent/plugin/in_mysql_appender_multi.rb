@@ -80,19 +80,18 @@ module Fluent
           db.query(get_query(config, last_id)).each do |row|
             if !config['entry_time'].nil? then
               entry_time = get_time(row[config['entry_time']])
-              if (start_time - delay) < entry_time then
-                break
+              if (start_time - delay) > entry_time then
+                if config['time_column'].nil? then
+                    td_time = Engine.now
+                else
+                  td_time = get_time(row[config['time_column']]).to_i
+                end
+                row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
+                router.emit(tag, td_time, row)
+                rows_count += 1
+                last_id = row[config['primary_key']]
               end
             end
-            if config['time_column'].nil? then
-                td_time = Engine.now
-            else
-              td_time = get_time(row[config['time_column']]).to_i
-            end
-            row.each {|k, v| row[k] = v.to_s if v.is_a?(Time) || v.is_a?(Date) || v.is_a?(BigDecimal)}
-            router.emit(tag, td_time, row)
-            rows_count += 1
-            last_id = row[config['primary_key']]
           end
           db.close
           elapsed_time = sprintf("%0.02f", Time.now - start_time)
