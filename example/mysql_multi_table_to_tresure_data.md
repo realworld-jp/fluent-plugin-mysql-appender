@@ -2,6 +2,16 @@
 
 It is a guide to replicate multiple mysql table to treasure data.
 
+## environment variables
+
+Please set environment variables.
+
+```
+TD_APIKEY    xxxxxxxx  # Treasure data API key.
+TD_ENDPOINT  api.treasuredata.com  # Treasure data API endpoint. e.g. "api.treasuredata.com".
+TD_DATABASE  sample_db # Treasure data database name.
+```
+
 ## configuration
 
 ```
@@ -20,9 +30,6 @@ It is a guide to replicate multiple mysql table to treasure data.
 
 <match appender_multi.*.*>
   type tdlog
-  endpoint your_td_endpoint
-  apikey your_td_apikey
-
   auto_create_table
   buffer_type file
   buffer_path /var/log/td-agent/buffer/td
@@ -42,26 +49,36 @@ Sample "in_tables.yml" is below.
 
 ```
 - table_name: test_tbl1
-  primary_key: id
-  time_column: created_at
+  primary_key: id  # incremental id
+  time_column: created_at  # assigned to td's time column
   limit: 1000
   columns:
     - id
     - column1
     - column2
-  last_id: -1
-  td_database: sample_datasets
-  entry_time: created_at  # if this column is greater (now - delay), wait insert.
+    - created_at
   delay: 10s
+  entry_time: created_at  # if this column is greater (now - delay), wait insert.
 
 - table_name: test_tbl2
-  primary_key: id
-  time_column: created_at
+  primary_key: id  # incremental id
+  time_column: created_at  # assigned to td's time column
   limit: 1000
   columns:
     - id
     - column1
     - column2
-  last_id: -1
-  td_database: sample_datasets
+    - created_at
+  delay: 10s
+  entry_time: created_at  # if this column is greater (now - delay), wait insert.
 ```
+
+```
+select id, column1, column2, created_ad from test_tbl1 where id > {last_id} limit 1000
+```
+
+```
+select id, column1, column2, created_ad from test_tbl2 where id > {last_id} limit 1000
+```
+
+run query in each syncronize loops.
