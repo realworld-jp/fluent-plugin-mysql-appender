@@ -1,3 +1,5 @@
+require 'fluent/input'
+
 module Fluent
   class MysqlAppenderInput < Fluent::Input
     Plugin.register_input('mysql_appender', self)
