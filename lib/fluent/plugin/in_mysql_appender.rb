@@ -1,19 +1,12 @@
-require 'fluent/input'
+require 'mysql2'
+require 'time'
+require 'fluent/plugin/input'
 
-module Fluent
-  class MysqlAppenderInput < Fluent::Input
-    Plugin.register_input('mysql_appender', self)
+module Fluent::Plugin
+  class MysqlAppenderInput < Input
+    Fluent::Plugin.register_input('mysql_appender', self)
 
-    # Define `router` method to support v0.10.57 or earlier
-    unless method_defined?(:router)
-      define_method("router") { Engine }
-    end
-
-    def initialize
-      require 'mysql2'
-      require 'time'
-      super
-    end
+    helpers :timer
 
     config_param :host, :string, :default => 'localhost'
     config_param :port, :integer, :default => 3306
@@ -31,30 +24,31 @@ module Fluent
 
     def configure(conf)
       super
-      @interval = Config.time_value(@interval)
+      @interval = Fluent::Config.time_value(@interval)
 
       if @tag.nil?
         raise Fluent::ConfigError, "mysql_appender: missing 'tag' parameter. Please add following line into config like 'tag replicator.mydatabase.mytable.${event}.${primary_key}'"
       end
 
-      $log.info "adding mysql_appender worker. :tag=>#{tag} :query=>#{@query} :limit=>#{limit} :interval=>#{@interval} sec "
+      log.info "adding mysql_appender worker. :tag=>#{tag} :query=>#{@query} :limit=>#{limit} :interval=>#{@interval} sec "
     end
 
     def start
-      @thread = Thread.new(&method(:run))
+      super
+      thread_create(:in_mysql_appender_runner, &method(:run))
     end
 
     def shutdown
-      Thread.kill(@thread)
+      super
     end
 
     def run
       begin
         poll
       rescue StandardError => e
-        $log.error "mysql_appender: failed to execute query."
-        $log.error "error: #{e.message}"
-        $log.error e.backtrace.join("\n")
+        log.error "mysql_appender: failed to execute query."
+        log.error "error: #{e.message}"
+        log.error e.backtrace.join("\n")
       end
     end
 
@@ -85,7 +79,7 @@ module Fluent
         end
         con.close
         elapsed_time = sprintf("%0.02f", Time.now - start_time)
-        $log.info "mysql_appender: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
+        log.info "mysql_appender: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
         sleep @interval
       end
     end
@@ -93,7 +87,7 @@ module Fluent
     def format_tag(tag, param)
       pattern = {'${event}' => param[:event].to_s, '${primary_key}' => @primary_key}
       tag.gsub(/(\${[a-z_]+})/) do
-        $log.warn "mysql_appender: missing placeholder. :tag=>#{tag} :placeholder=>#{$1}" unless pattern.include?($1)
+        log.warn "mysql_appender: missing placeholder. :tag=>#{tag} :placeholder=>#{$1}" unless pattern.include?($1)
         pattern[$1]
       end
     end
@@ -104,7 +98,7 @@ module Fluent
         con = con.ping ? con : get_connection
         return con.query(query), con
       rescue Exception => e
-        $log.warn "mysql_appender: #{e}"
+        log.warn "mysql_appender: #{e}"
         sleep @interval
         retry
       end
@@ -124,7 +118,7 @@ module Fluent
           :cache_rows => false
         })
       rescue Exception => e
-        $log.warn "mysql_appender: #{e}"
+        log.warn "mysql_appender: #{e}"
         sleep @interval
         retry
       end

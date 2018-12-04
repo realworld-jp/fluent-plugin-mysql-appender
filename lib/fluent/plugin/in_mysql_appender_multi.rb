@@ -1,22 +1,13 @@
+require 'mysql2'
+require 'time'
+require 'yaml'
+require 'td'
+require 'td-client'
 require 'fluent/input'
 
-module Fluent
-  class MysqlAppenderMultiInput < Fluent::Input
-    Plugin.register_input('mysql_appender_multi', self)
-
-    # Define `router` method to support v0.10.57 or earlier
-    unless method_defined?(:router)
-      define_method("router") { Engine }
-    end
-
-    def initialize
-      require 'mysql2'
-      require 'time'
-      require 'yaml'
-      require 'td'
-      require 'td-client'
-      super
-    end
+module Fluent::Plugin
+  class MysqlAppenderMultiInput < Input
+    Fluent::Plugin.register_input('mysql_appender_multi', self)
 
     config_param :host, :string, :default => 'localhost'
     config_param :port, :integer, :default => 3306
@@ -30,7 +21,7 @@ module Fluent
 
     def configure(conf)
       super
-      @interval = Config.time_value(@interval)
+      @interval = Fluent::Config.time_value(@interval)
 
       if @yaml_path.nil?
         raise Fluent::ConfigError, "mysql_appender_multi: missing 'yaml_path' parameter."
@@ -46,32 +37,29 @@ module Fluent
     end
 
     def start
+      super
       begin
         @threads = []
         @mutex = Mutex.new
-        YAML.load_file(@yaml_path).each do |config|
-          @threads << Thread.new {
-            poll(config)
-          }
+        YAML.load_file(@yaml_path).each_with_index do |config, idx|
+          @threads << thread_create(:"in_mysql_appender_multi_runner_#{idx}", &method(:poll))
         end
-        $log.error "mysql_appender_multi: stop working due to empty configuration" if @threads.empty?
+        log.error "mysql_appender_multi: stop working due to empty configuration" if @threads.empty?
       rescue => e
-        $log.error "error: #{e.message}"
-        $log.error e.backtrace.join("\n")
+        log.error "error: #{e.message}"
+        log.error e.backtrace.join("\n")
       end
     end
 
     def shutdown
-      @threads.each do |thread|
-        Thread.kill(thread)
-      end
+      super
     end
 
     def poll(config)
       begin
         tag = format_tag(config)
         @mutex.synchronize {
-          $log.info "mysql_appender_multi: polling start. :tag=>#{tag}"
+          log.info "mysql_appender_multi: polling start. :tag=>#{tag}"
         }
         last_id = get_lastid(config)
         loop do
@@ -94,14 +82,14 @@ module Fluent
           db.close
           elapsed_time = sprintf("%0.02f", Time.now - start_time)
           @mutex.synchronize {
-            $log.info "mysql_appender_multi: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
+            log.info "mysql_appender_multi: finished execution :tag=>#{tag} :rows_count=>#{rows_count} :last_id=>#{last_id} :elapsed_time=>#{elapsed_time} sec"
           }
           sleep @interval
         end
       rescue => e
-        $log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
-        $log.error "error: #{e.message}"
-        $log.error e.backtrace.join("\n")
+        log.error "mysql_appender_multi: failed to execute query. :config=>#{masked_config}"
+        log.error "error: #{e.message}"
+        log.error e.backtrace.join("\n")
       end
     end
 
@@ -129,17 +117,17 @@ module Fluent
           end
           job.update_status!  # get latest info
           job.result_each { |row|
-            $log.info  "mysql_appender_multi: #{ENV['TD_DATABASE']}.#{config['table_name']}'s last_id is #{row.first} "
+            log.info  "mysql_appender_multi: #{ENV['TD_DATABASE']}.#{config['table_name']}'s last_id is #{row.first} "
             return row.first
           }
         else
-          $log.info "mysql_appender_multi: #{ENV['TD_DATABASE']}.#{config['table_name']} is not found. "
+          log.info "mysql_appender_multi: #{ENV['TD_DATABASE']}.#{config['table_name']} is not found. "
           return -1
         end
       rescue => e
-        $log.warn "mysql_appender_multi: failed to get lastid. #{config}"
-        $log.error "error: #{e.message}"
-        $log.error e.backtrace.join("\n")
+        log.warn "mysql_appender_multi: failed to get lastid. #{config}"
+        log.error "error: #{e.message}"
+        log.error e.backtrace.join("\n")
       end
     end
 
@@ -166,7 +154,7 @@ module Fluent
           :cache_rows => false
         })
       rescue Mysql2::Error => e
-        $log.warn "mysql_appender_multi: #{e}"
+        log.warn "mysql_appender_multi: #{e}"
         sleep @interval
         retry
       end

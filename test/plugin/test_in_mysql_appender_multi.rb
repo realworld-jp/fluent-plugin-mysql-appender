@@ -14,7 +14,7 @@ class MysqlAppenderMultiInputTest < Test::Unit::TestCase
   ]
 
   def create_driver(conf=CONFIG)
-    Fluent::Test::InputTestDriver.new(Fluent::MysqlAppenderMultiInput).configure(conf)
+    Fluent::Test::Driver::Input.new(Fluent::Plugin::MysqlAppenderMultiInput).configure(conf)
   end
 
   def test_configure

@@ -18,17 +18,7 @@ $LOAD_PATH.unshift(File.dirname(__FILE__))
 require 'fluent/test'
 require 'fluent/input'
 require 'fluent/log'
-
-unless ENV.has_key?('VERBOSE')
-  nulllogger = Object.new
-  nulllogger.instance_eval {|obj|
-    def method_missing(method, *args)
-      # pass
-    end
-  }
-  $log = nulllogger
-end
-
+require 'fluent/test/driver/input'
 require 'fluent/plugin/in_mysql_appender'
 require 'fluent/plugin/in_mysql_appender_multi'
 
